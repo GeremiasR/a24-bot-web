@@ -1,6 +1,7 @@
 import express from "express";
 import dontenv from "dotenv";
 import fichas from "./scrappers/tasks/fichas";
+import checkAgent from "./scrappers/tasks/checkAgent";
 import { Request, Response } from "express";
 import {
   OperationRequest,
@@ -16,26 +17,73 @@ app.use(express.json());
 
 //todo: fichas
 //todo: crear usuario
-//todo: check agente
-//todo: repo
 
 app.post("/agent/fichas", internalAuth, async (req: Request, res: Response) => {
   try {
     const operationReq = <OperationRequest>req.body;
     const crapRes: OperationResult = await fichas(operationReq);
-    if (crapRes.status) {
-      return res.send({
-        status: 200,
-        message: "Operacion realizada correctamente",
-        data: crapRes,
-      });
-    } else {
+    if (!crapRes.status) {
       return res.send({
         status: 500,
         message: "Internal server error",
         errors: crapRes,
       });
     }
+    return res.send({
+      status: 200,
+      message: "Operacion realizada correctamente",
+      data: crapRes,
+    });
+  } catch (error) {
+    return res.send({
+      status: 500,
+      message: "Internal server error",
+      errors: error,
+    });
+  }
+});
+
+app.post("/agent/check", internalAuth, async (req: Request, res: Response) => {
+  try {
+    const operationReq = <OperationRequest>req.body;
+    const crapRes: OperationResult = await checkAgent(operationReq);
+    if (!crapRes.status) {
+      return res.send({
+        status: 500,
+        message: "Internal server error",
+        errors: crapRes,
+      });
+    }
+    return res.send({
+      status: 200,
+      message: "Operacion realizada correctamente",
+      data: crapRes,
+    });
+  } catch (error) {
+    return res.send({
+      status: 500,
+      message: "Internal server error",
+      errors: error,
+    });
+  }
+});
+
+app.post("/user/create", internalAuth, async (req: Request, res: Response) => {
+  try {
+    const operationReq = <OperationRequest>req.body;
+    const crapRes: OperationResult = await fichas(operationReq);
+    if (!crapRes.status) {
+      return res.send({
+        status: 500,
+        message: "Internal server error",
+        errors: crapRes,
+      });
+    }
+    return res.send({
+      status: 200,
+      message: "Operacion realizada correctamente",
+      data: crapRes,
+    });
   } catch (error) {
     return res.send({
       status: 500,
