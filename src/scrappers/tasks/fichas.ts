@@ -1,10 +1,7 @@
+import { decodePassword } from "../../helpers/auth";
 import { OperationRequest, OperationResult } from "../models/Operation";
 
 import puppeteer from "puppeteer";
-
-//todo: Agregar token
-//todo: agregar decodificacion de password
-//todo: deploy
 
 export default async (op: OperationRequest) => {
   let operationRes: OperationResult = {
@@ -30,7 +27,9 @@ export default async (op: OperationRequest) => {
     await page.waitForSelector("#user");
 
     await page.type("#user", op.agente_user);
-    await page.type("#passwd", op.agente_pass);
+    const passAgent = decodePassword(op.agente_pass);
+    if (!passAgent) throw new Error("Error al obtener los datos del agente");
+    await page.type("#passwd", passAgent);
     await page.click("#dologin");
 
     //* Validate Agent Balance

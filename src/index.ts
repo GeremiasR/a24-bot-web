@@ -6,6 +6,7 @@ import {
   OperationRequest,
   OperationResult,
 } from "./scrappers/models/Operation";
+import { internalAuth } from "./helpers/auth";
 
 dontenv.config();
 
@@ -18,7 +19,7 @@ app.use(express.json());
 //todo: check agente
 //todo: repo
 
-app.post("/agent/fichas", async (req: Request, res: Response) => {
+app.post("/agent/fichas", internalAuth, async (req: Request, res: Response) => {
   try {
     const operationReq = <OperationRequest>req.body;
     const crapRes: OperationResult = await fichas(operationReq);
