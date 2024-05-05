@@ -8,6 +8,7 @@ import {
   OperationResult,
 } from "./scrappers/models/Operation";
 import { internalAuth } from "./helpers/auth";
+import createUser from "./scrappers/tasks/createUser";
 
 dontenv.config();
 
@@ -15,7 +16,8 @@ const app = express();
 
 app.use(express.json());
 
-//todo: fichas
+//todo: deploy
+//todo: quitar apertura de browser
 //todo: crear usuario
 
 app.post("/agent/fichas", internalAuth, async (req: Request, res: Response) => {
@@ -71,7 +73,7 @@ app.post("/agent/check", internalAuth, async (req: Request, res: Response) => {
 app.post("/user/create", internalAuth, async (req: Request, res: Response) => {
   try {
     const operationReq = <OperationRequest>req.body;
-    const crapRes: OperationResult = await fichas(operationReq);
+    const crapRes: OperationResult = await createUser(operationReq);
     if (!crapRes.status) {
       return res.send({
         status: 500,

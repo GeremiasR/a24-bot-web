@@ -3,6 +3,12 @@ import { OperationRequest, OperationResult } from "../models/Operation";
 
 import puppeteer from "puppeteer";
 
+
+function randomIntFromInterval(min: number, max: number) { // min and max included 
+  return Math.floor(Math.random() * (max - min + 1) + min);
+}
+
+//todo: max16
 export default async (op: OperationRequest) => {
   let operationRes: OperationResult = {
     usuario: op.usuario_carga,
@@ -22,6 +28,7 @@ export default async (op: OperationRequest) => {
   page.setDefaultTimeout(timeout);
   await page.setViewport({ width: 1080, height: 1024 });
   try {
+    if(op.usuario_carga.length > 16) throw new Error("El nombre de usuario debe tener no mas de 16 caracteres")
     await page.goto(op.url);
     //* Login
     await page.waitForSelector("#user");
@@ -50,101 +57,31 @@ export default async (op: OperationRequest) => {
       throw new Error("Error al obtener el balance del agente");
     }
 
-    //* Navigate to users table
-    await page.waitForSelector("#sidemenu_global_ul > li:nth-of-type(2) > a");
+    await page.waitForSelector("#NewPlayerButton");
+    await page.click("#NewPlayerButton")
 
-    await page.click("#sidemenu_global_ul > li:nth-of-type(2) > a");
+    await page.waitForSelector("#ModalNewUser", { visible: true });
+    await page.type("#NewUserPlayerUsername", op.usuario_carga);
+    const newPass: string = `TIGER${randomIntFromInterval(1000, 9999)}`;
+    await page.type("#NewUserPlayerPassword", newPass);
+    await page.click("#ModalNewUserPlayerSubmit");
+    await page.waitForSelector("#NewUserPlayerLoading", { visible: true });
+    await page.waitForSelector("#NewUserPlayerLoading", { hidden: true });
+    const errorMessage = await page.$eval(
+      '#NewUserPlayerError',
+      (el) => el.textContent
+    );
+    if(errorMessage && errorMessage.length > 0){
+      throw new Error(errorMessage);
+    }
 
-    await page.waitForSelector("#UserSearch");
-
+    await page.waitForSelector("#ModalNewUser", { hidden: true });
+    
     await page.type("#UserSearch", op.usuario_carga);
-    await page.click("#UserSearchButton");
-
-    await page.waitForSelector("#users");
-
-    operationRes = await page.evaluate(
-      (op: OperationRequest, operationRes: OperationResult) => {
-        let operationResult: OperationResult = operationRes;
-        const rows = document.querySelectorAll("#users tbody tr");
-        for (let index = 0; index < rows.length; index++) {
-          const userNameScraped = document
-            .querySelectorAll("#users tbody tr")
-            [index].querySelectorAll("td")[0].innerText;
-          if (userNameScraped.toLowerCase() == op.usuario_carga.toLowerCase()) {
-            operationResult.usuario = userNameScraped;
-            operationResult.saldo_anterior = parseFloat(
-              document
-                .querySelectorAll("#users tbody tr")
-                [index].querySelectorAll("td")[1]
-                .innerText.replaceAll(".", "")
-                .replaceAll(",", ".")
-            );
-            if (
-              !op.esCarga &&
-              operationResult.saldo_anterior < parseFloat(op.monto)
-            )
-              throw new Error("Monto insuficiente para retiro");
-            const addFichasAction: any = document
-              .querySelectorAll("#users tbody tr")
-              [index].querySelectorAll("td")[2].children[op.esCarga ? 0 : 1];
-            addFichasAction.click();
-            break;
-          }
-          if (rows.length - 1 == index) {
-            throw new Error("Usuario no encontrado");
-          }
-        }
-        return operationResult;
-      },
-      op,
-      operationRes
-    );
-
+    await page.click(".btn-add-credit");
     await page.waitForSelector("#ModalCredit", { visible: true });
-    await page.type("#ModalCreditAmount", op.monto);
-
-    await page.click("#ModalCreditSubmit");
-    await page.waitForSelector("#ModalCredit", { hidden: true });
-
-    operationRes = await page.evaluate(
-      (op: OperationRequest, operationRes: OperationResult) => {
-        let operationResult: OperationResult = operationRes;
-        const rows = document.querySelectorAll("#users tbody tr");
-        for (let index = 0; index < rows.length; index++) {
-          const userNameScraped = document
-            .querySelectorAll("#users tbody tr")
-            [index].querySelectorAll("td")[0].innerText;
-          if (userNameScraped.toLowerCase() == op.usuario_carga.toLowerCase()) {
-            operationRes.saldo_actual = parseFloat(
-              document
-                .querySelectorAll("#users tbody tr")
-                [index].querySelectorAll("td")[1]
-                .innerText.replaceAll(".", "")
-                .replaceAll(",", ".")
-            );
-            if (
-              operationRes.saldo_anterior + parseFloat(op.monto) ==
-              operationRes.saldo_actual
-            ) {
-              operationRes.message = "Carga Exitosa";
-              operationRes.status = true;
-            }
-            if (
-              operationRes.saldo_anterior - parseFloat(op.monto) ==
-              operationRes.saldo_actual
-            ) {
-              operationRes.message = "Retiro Exitoso";
-              operationRes.status = true;
-            }
-            break;
-          }
-        }
-        return operationResult;
-      },
-      op,
-      operationRes
-    );
-
+    operationRes.status = true;
+    operationRes.message = `Usuario creado correctamente, su contraseña es: ${newPass}, Descuida, podras cambiarla cuando entres a la sala`;
     await browser.close();
     return operationRes;
   } catch (error: any) {
